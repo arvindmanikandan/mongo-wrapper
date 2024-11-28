@@ -64,6 +64,7 @@ export class MongoConnect implements Mongo {
       socketTimeoutMS: 30000,
       serverSelectionTimeoutMS: 10000,
       readPreference: ReadPreference.SECONDARY_PREFERRED,
+      monitorCommands: true,
     };
     this.config.authSource = (userConfig.auth || {}).authSource;
     this.mode = mode;
