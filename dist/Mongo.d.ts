@@ -1,5 +1,5 @@
 import events from "events";
-import { Db, MongoClient, MongoClientOptions, ObjectId, MongoServerSelectionError, MongoNetworkError, MongoTimeoutError } from "mongodb";
+import { Db, MongoClient, MongoClientOptions, ObjectId, MongoServerSelectionError, MongoNetworkError, MongoNetworkTimeoutError } from "mongodb";
 export interface Server {
     host: string;
     port: number;
@@ -12,7 +12,6 @@ export interface AuthConfig {
 export interface UserConfig {
     db: string;
     auth?: AuthConfig;
-    applicationName?: string;
     getServers(): Promise<Server[]>;
 }
 export interface Mongo {
@@ -40,7 +39,7 @@ export declare class MongoConnect implements Mongo {
     error(err: Error, data?: Record<string, any>): void;
     getHealthyHosts(): Server[];
     private getConnectionUrl;
-    static isValidError(err: Error): err is MongoServerSelectionError | MongoTimeoutError | MongoNetworkError;
+    static isValidError(err: Error): err is MongoServerSelectionError | MongoNetworkError | MongoNetworkTimeoutError;
     getClient(): MongoClient;
     connect(): Promise<Mongo>;
 }
@@ -55,7 +54,6 @@ export interface ServerConfig {
     port: number;
     db: string;
     auth?: AuthConfig;
-    applicationName?: string;
 }
 export interface ReplicaConfig {
     db: string;
@@ -64,7 +62,6 @@ export interface ReplicaConfig {
         servers: Server[];
     };
     auth?: AuthConfig;
-    applicationName?: string;
 }
 export interface ShardConfig {
     db: string;
@@ -72,7 +69,6 @@ export interface ShardConfig {
         getServers: () => Promise<Server[]>;
     };
     auth?: AuthConfig;
-    applicationName?: string;
 }
 export declare function MongoFactory(mode: MODES, name: string, emitter: events.EventEmitter, config: ServerConfig | ReplicaConfig | ShardConfig): Mongo;
 export declare function MongoFactoryAuto(name: string, emitter: events.EventEmitter, config: MongoConfig): Mongo;

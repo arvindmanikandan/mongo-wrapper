@@ -3,12 +3,11 @@ import {
   Db,
   MongoClient,
   MongoClientOptions,
-  Logger as MongoLogger,
   ObjectId,
   ReadPreference,
   MongoServerSelectionError,
   MongoNetworkError,
-  MongoTimeoutError,
+  MongoNetworkTimeoutError,
 } from "mongodb";
 
 export interface Server {
@@ -25,7 +24,6 @@ export interface AuthConfig {
 export interface UserConfig {
   db: string;
   auth?: AuthConfig;
-  applicationName?: string;
   getServers(): Promise<Server[]>;
 }
 
@@ -61,12 +59,10 @@ export class MongoConnect implements Mongo {
     this.userConfig = userConfig;
     this.config = {
       keepAlive: true,
-      poolSize: 5,
+      maxPoolSize: 5,
       connectTimeoutMS: 30000,
       socketTimeoutMS: 30000,
       serverSelectionTimeoutMS: 10000,
-      useUnifiedTopology: true,
-      connectWithNoPrimary: false,
       readPreference: ReadPreference.SECONDARY_PREFERRED,
     };
     this.config.authSource = (userConfig.auth || {}).authSource;
@@ -122,8 +118,8 @@ export class MongoConnect implements Mongo {
     );
 
     const params = new URLSearchParams();
-    if (this.userConfig.applicationName) {
-      params.set("appName", this.userConfig.applicationName);
+    if (this.name) {
+      params.set("appName", this.name);
     }
 
     return joiner.join("") + (params.size > 0 ? "?" + params.toString() : "");
@@ -133,12 +129,12 @@ export class MongoConnect implements Mongo {
     return (
       err instanceof MongoServerSelectionError ||
       err instanceof MongoNetworkError ||
-      err instanceof MongoTimeoutError
+      err instanceof MongoNetworkTimeoutError
     );
   }
 
   getClient(): MongoClient {
-      return this.mongoClient;
+    return this.mongoClient;
   }
 
   async connect(): Promise<Mongo> {
@@ -153,6 +149,7 @@ export class MongoConnect implements Mongo {
         const connectionUrl = await this.getConnectionUrl(); // C * 10 => 10C seconds
         const mongoClient = new MongoClient(connectionUrl, this.config); // 10 * 10 => 100 seconds
         await mongoClient.connect();
+
         // Update this.mongoClient ONLY after a valid client has been established; else topology closed error will
         // be thrown will is not being monitored/is valid error for reconnection
         this.mongoClient = mongoClient;
@@ -170,9 +167,20 @@ export class MongoConnect implements Mongo {
     }
     this.client = this.mongoClient.db(this.userConfig.db);
     this.success(`Successfully connected in ${this.mode} mode`);
-    MongoLogger.setLevel("info");
-    MongoLogger.setCurrentLogger((msg, context) => {
-      this.log(msg, context);
+    this.mongoClient.on('commandStarted', (event) => {
+      this.log('Command Started:', event);
+      // Add the comment to any command that supports it
+      if (event.command && typeof event.command === 'object') {
+        event.command.comment = `AppName: ${this.name}`;
+      }
+    });
+
+    this.mongoClient.on('commandSucceeded', (event) => {
+      this.log('Command Succeeded:', event);
+    });
+    
+    this.mongoClient.on('commandFailed', (event) => {
+      this.log('Command Failed:', event);
     });
     if (oldMongoClient instanceof MongoClient) {
       // Do NOT wait. If you wait, this might block indefinitely due to the older server being out of action.
@@ -208,7 +216,6 @@ export interface ServerConfig {
   port: number;
   db: string;
   auth?: AuthConfig;
-  applicationName?: string;
 }
 
 export interface ReplicaConfig {
@@ -218,7 +225,6 @@ export interface ReplicaConfig {
     servers: Server[];
   };
   auth?: AuthConfig;
-  applicationName?: string;
 }
 
 export interface ShardConfig {
@@ -227,7 +233,6 @@ export interface ShardConfig {
     getServers: () => Promise<Server[]>;
   };
   auth?: AuthConfig;
-  applicationName?: string;
 }
 
 export function MongoFactory(
@@ -254,12 +259,11 @@ class ServerMongo extends MongoConnect {
     emitter: events.EventEmitter,
     config: ServerConfig,
   ) {
-    const { db, host, port, auth, applicationName } = config;
+    const { db, host, port, auth } = config;
     const userConfig: UserConfig = {
       db,
       getServers: () => Promise.resolve([{ host, port }]),
       auth,
-      applicationName,
     };
     super(name, emitter, userConfig, MODES.SERVER);
   }
@@ -271,12 +275,11 @@ class ReplSet extends MongoConnect {
     emitter: events.EventEmitter,
     replicaConfig: ReplicaConfig
   ) {
-    const { db, replica, auth, applicationName } = replicaConfig;
+    const { db, replica, auth } = replicaConfig;
     const config: UserConfig = {
       db: db,
       getServers: () => Promise.resolve(replica.servers),
       auth,
-      applicationName,
     };
     super(name, emitter, config, MODES.REPLSET);
     this.config.replicaSet = replica.name;
@@ -289,11 +292,11 @@ class ShardMongo extends MongoConnect {
     emitter: events.EventEmitter,
     shardConfig: ShardConfig
   ) {
-    const { db, shard, auth, applicationName } = shardConfig;
+    const { db, shard, auth } = shardConfig;
     super(
       name,
       emitter,
-      { db, getServers: shard.getServers, auth, applicationName },
+      { db, getServers: shard.getServers, auth },
       MODES.SHARD
     );
   }
