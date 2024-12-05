@@ -64,7 +64,6 @@ export class MongoConnect implements Mongo {
       socketTimeoutMS: 30000,
       serverSelectionTimeoutMS: 10000,
       readPreference: ReadPreference.SECONDARY_PREFERRED,
-      monitorCommands: true,
     };
     this.config.authSource = (userConfig.auth || {}).authSource;
     this.mode = mode;
@@ -148,7 +147,10 @@ export class MongoConnect implements Mongo {
       try {
         // Returns connection url with only healthy hosts
         const connectionUrl = await this.getConnectionUrl(); // C * 10 => 10C seconds
-        const mongoClient = new MongoClient(connectionUrl, this.config); // 10 * 10 => 100 seconds
+        const mongoClient = new MongoClient(connectionUrl, { 
+          ...this.config,
+          appName: this.name,
+        }); // 10 * 10 => 100 seconds
         await mongoClient.connect();
 
         // Update this.mongoClient ONLY after a valid client has been established; else topology closed error will
@@ -168,21 +170,6 @@ export class MongoConnect implements Mongo {
     }
     this.client = this.mongoClient.db(this.userConfig.db);
     this.success(`Successfully connected in ${this.mode} mode`);
-    this.mongoClient.on('commandStarted', (event) => {
-      this.log('Command Started:', event);
-      // Add the comment to any command that supports it
-      if (event.command && typeof event.command === 'object') {
-        event.command.comment = `AppName: ${this.name}`;
-      }
-    });
-
-    this.mongoClient.on('commandSucceeded', (event) => {
-      this.log('Command Succeeded:', event);
-    });
-    
-    this.mongoClient.on('commandFailed', (event) => {
-      this.log('Command Failed:', event);
-    });
     if (oldMongoClient instanceof MongoClient) {
       // Do NOT wait. If you wait, this might block indefinitely due to the older server being out of action.
       oldMongoClient.close();
