@@ -1,7 +1,7 @@
 {
   "name": "@quizizz/mongo",
-  "version": "0.0.2",
-  "description": "A simple wrapper around mongo native nodejs",
+  "version": "0.2.3",
+  "description": "A simple wrapper around mongo native nodejs and TS",
   "main": "dist/Mongo.js",
   "types": "dist/Mongo.d.ts",
   "files": [
