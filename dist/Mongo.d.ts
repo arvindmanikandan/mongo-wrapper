@@ -1,6 +1,5 @@
-/// <reference types="node" />
 import events from "events";
-import { Db, MongoClient, MongoClientOptions, ObjectId } from "mongodb";
+import { Db, MongoClient, MongoClientOptions, ObjectId, MongoServerSelectionError, MongoNetworkError, MongoTimeoutError } from "mongodb";
 export interface Server {
     host: string;
     port: number;
@@ -40,7 +39,7 @@ export declare class MongoConnect implements Mongo {
     error(err: Error, data?: Record<string, any>): void;
     getHealthyHosts(): Server[];
     private getConnectionUrl;
-    static isValidError(err: Error): boolean;
+    static isValidError(err: Error): err is MongoServerSelectionError | MongoTimeoutError | MongoNetworkError;
     getClient(): MongoClient;
     connect(): Promise<Mongo>;
 }

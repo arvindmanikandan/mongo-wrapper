@@ -3,6 +3,7 @@
         "module": "commonjs",
         "target": "esnext",
         "declaration": true,
+        "skipLibCheck": true,
         "outDir": "./dist",
         "esModuleInterop": true,
         "inlineSourceMap": true

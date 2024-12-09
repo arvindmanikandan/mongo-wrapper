@@ -145,7 +145,10 @@ export class MongoConnect implements Mongo {
       try {
         // Returns connection url with only healthy hosts
         const connectionUrl = await this.getConnectionUrl(); // C * 10 => 10C seconds
-        const mongoClient = new MongoClient(connectionUrl, this.config); // 10 * 10 => 100 seconds
+        const mongoClient = new MongoClient(connectionUrl, { 
+          ...this.config,
+          appname: this.name,
+        }); // 10 * 10 => 100 seconds
         await mongoClient.connect();
         // Update this.mongoClient ONLY after a valid client has been established; else topology closed error will
         // be thrown will is not being monitored/is valid error for reconnection
