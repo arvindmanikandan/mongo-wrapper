@@ -118,6 +118,8 @@ class Mongo extends Service {
       options,
     });
 
+    url += `/?appname=${this.name}`;
+
     this.log.info('Connecting to url', url);
     this.emitInfo('connecting', `Connecting in ${infoObj.mode} mode`, infoObj);
 
