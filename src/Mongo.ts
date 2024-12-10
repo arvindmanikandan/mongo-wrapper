@@ -119,7 +119,7 @@ class MongoConnect implements Mongo {
       servers.map((server) => `${server.host}:${server.port}`).join(",")
     );
 
-    return joiner.join("");
+    return joiner.join("") + `?appname=${this.name}`;
   }
 
   static isValidError(err: Error) {
